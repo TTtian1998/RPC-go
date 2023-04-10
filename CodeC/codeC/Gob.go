@@ -14,6 +14,7 @@ type GobCodec struct {
 	enc  *gob.Encoder
 }
 
+//check GobCodec implements interface Codec
 var _ Codec = (*GobCodec)(nil)
 
 func NewGobCodec(conn io.ReadWriteCloser) Codec {
