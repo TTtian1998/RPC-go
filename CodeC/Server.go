@@ -2,12 +2,14 @@ package rpc_go
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"reflect"
 	"rpc_go/codeC"
+	"strings"
 	"sync"
 )
 
@@ -22,9 +24,6 @@ var DefaultOption = &Option{
 	MagicNumber: MagicNumber,
 	CodecType:   codeC.GobType,
 }
-
-// Server represents an RPC Server.
-type Server struct{}
 
 // NewServer returns a new Server.
 func NewServer() *Server {
@@ -141,4 +140,41 @@ func (server *Server) handleRequest(cc codeC.Codec, req *request, sending *sync.
 	log.Println(req.h, req.argv.Elem())
 	req.replyv = reflect.ValueOf(fmt.Sprintf("rpc resp %d", req.h.Seq))
 	server.sendResponse(cc, req.h, req.replyv.Interface(), sending)
+}
+
+// Server represents an RPC Server.
+type Server struct {
+	serviceMap sync.Map
+}
+
+// Register publishes in the server the set of methods of the
+func (server *Server) Register(rcvr interface{}) error {
+	s := newService(rcvr)
+	if _, dup := server.serviceMap.LoadOrStore(s.name, s); dup {
+		return errors.New("rpc: service already defined: " + s.name)
+	}
+	return nil
+}
+
+// Register publishes the receiver's methods in the DefaultServer.
+func Register(rcvr interface{}) error { return DefaultServer.Register(rcvr) }
+
+func (server *Server) findService(serviceMethod string) (svc *service, mtype *methodType, err error) {
+	dot := strings.LastIndex(serviceMethod, ".")
+	if dot < 0 {
+		err = errors.New("rpc server: service/method request ill-formed: " + serviceMethod)
+		return
+	}
+	serviceName, methodName := serviceMethod[:dot], serviceMethod[dot+1:]
+	svci, ok := server.serviceMap.Load(serviceName)
+	if !ok {
+		err = errors.New("rpc server: can't find service " + serviceName)
+		return
+	}
+	svc = svci.(*service)
+	mtype = svc.method[methodName]
+	if mtype == nil {
+		err = errors.New("rpc server: can't find method " + methodName)
+	}
+	return
 }
