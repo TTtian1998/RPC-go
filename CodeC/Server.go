@@ -219,7 +219,7 @@ func (server *Server) findService(serviceMethod string) (svc *service, mtype *me
 }
 
 const (
-	connected        = "200 Connected to Gee RPC"
+	connected        = "200 Connected to RPC"
 	defaultRPCPath   = "/_prc_"
 	defaultDebugPath = "/debug/rpc"
 )
