@@ -24,7 +24,7 @@ type ServerItem struct {
 }
 
 const (
-	defaultPath    = "/_geerpc_/registry"
+	defaultPath    = "/_rpc_/registry"
 	defaultTimeout = time.Minute * 5
 )
 
@@ -36,7 +36,7 @@ func New(timeout time.Duration) *Registry {
 	}
 }
 
-var DefaultGeeRegister = New(defaultTimeout)
+var DefaultRegister = New(defaultTimeout)
 
 func (r *Registry) putServer(addr string) {
 	r.mu.Lock()
@@ -64,15 +64,15 @@ func (r *Registry) aliveServers() []string {
 	return alive
 }
 
-// Runs at /_geerpc_/registry
+// Runs at /_rpc_/registry
 func (r *Registry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
 		// keep it simple, server is in req.Header
-		w.Header().Set("X-Geerpc-Servers", strings.Join(r.aliveServers(), ","))
+		w.Header().Set("X-rpc-Servers", strings.Join(r.aliveServers(), ","))
 	case "POST":
 		// keep it simple, server is in req.Header
-		addr := req.Header.Get("X-Geerpc-Server")
+		addr := req.Header.Get("X-rpc-Server")
 		if addr == "" {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -90,7 +90,7 @@ func (r *Registry) HandleHTTP(registryPath string) {
 }
 
 func HandleHTTP() {
-	DefaultGeeRegister.HandleHTTP(defaultPath)
+	DefaultRegister.HandleHTTP(defaultPath)
 }
 
 // Heartbeat send a heartbeat message every once in a while
@@ -116,7 +116,7 @@ func sendHeartbeat(registry, addr string) error {
 	log.Println(addr, "send heart beat to registry", registry)
 	httpClient := &http.Client{}
 	req, _ := http.NewRequest("POST", registry, nil)
-	req.Header.Set("X-Geerpc-Server", addr)
+	req.Header.Set("X-rpc-Server", addr)
 	if _, err := httpClient.Do(req); err != nil {
 		log.Println("rpc server: heart beat err:", err)
 		return err
